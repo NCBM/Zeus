@@ -78,12 +78,11 @@ public class ZeusMain
             MainInterpreter.setInitParams(config);
             pythonRunner = new PythonRunner();
             pythonRunner.execute((interpreter) -> {
-                // interpreter.exec("import webbrowser");
-                // interpreter.exec("webbrowser.open_new_tab('https://www.baidu.com')");
-                interpreter.exec("import pymod_runtime");
+                interpreter.exec("import importlib");
                 interpreter.exec("import sys");
-                interpreter.exec("sys.path.insert(0, \"../../python/mods\")");
-                interpreter.exec("import example");
+                interpreter.exec("import os");
+                interpreter.exec("sys.path.insert(0, \"python/mods\")");
+                interpreter.exec("for mod in os.listdir('python/mods'):\n    if mod.startswith('_'): continue\n    importlib.import_module(mod)");
             });
         } catch (Exception e) {
             LOGGER.error("Cannot start python interpreter for mod '{}'.", MODID, e);
@@ -93,11 +92,8 @@ public class ZeusMain
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
-        // Register the Deferred Register to the mod event bus so blocks get registered
         BLOCKS.register(modEventBus);
-        // Register the Deferred Register to the mod event bus so items get registered
         ITEMS.register(modEventBus);
-        // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
