@@ -1,0 +1,6 @@
+import jep
+
+class JarSignerException(jep.PyJObject): ...
+
+class JarSigner(jep.PyJObject): ...
+

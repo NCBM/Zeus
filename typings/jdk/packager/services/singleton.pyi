@@ -1,0 +1,6 @@
+import jep
+
+class SingleInstanceService(jep.PyJObject): ...
+
+class SingleInstanceListener(jep.PyJObject): ...
+

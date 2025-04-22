@@ -1,0 +1,6 @@
+import jep
+
+class UnknownEncodingHelper(jep.PyJObject): ...
+
+class UnknownEncoding(jep.PyJObject): ...
+

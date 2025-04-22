@@ -1,0 +1,6 @@
+import jep
+
+class W3CEndpointReferenceBuilder(jep.PyJObject): ...
+
+class W3CEndpointReference(jep.PyJObject): ...
+

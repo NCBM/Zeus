@@ -1,0 +1,6 @@
+import jep
+
+class SslRMIClientSocketFactory(jep.PyJObject): ...
+
+class SslRMIServerSocketFactory(jep.PyJObject): ...
+

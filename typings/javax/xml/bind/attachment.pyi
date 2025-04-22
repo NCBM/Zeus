@@ -1,0 +1,6 @@
+import jep
+
+class AttachmentUnmarshaller(jep.PyJObject): ...
+
+class AttachmentMarshaller(jep.PyJObject): ...
+

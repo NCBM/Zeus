@@ -1,0 +1,6 @@
+import jep
+
+class JSObject(jep.PyJObject): ...
+
+class JSException(jep.PyJObject): ...
+

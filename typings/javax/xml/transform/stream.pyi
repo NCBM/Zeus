@@ -1,0 +1,6 @@
+import jep
+
+class StreamSource(jep.PyJObject): ...
+
+class StreamResult(jep.PyJObject): ...
+

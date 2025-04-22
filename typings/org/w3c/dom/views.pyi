@@ -1,0 +1,6 @@
+import jep
+
+class DocumentView(jep.PyJObject): ...
+
+class AbstractView(jep.PyJObject): ...
+

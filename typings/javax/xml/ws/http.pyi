@@ -1,0 +1,6 @@
+import jep
+
+class HTTPBinding(jep.PyJObject): ...
+
+class HTTPException(jep.PyJObject): ...
+

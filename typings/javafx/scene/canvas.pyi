@@ -1,0 +1,6 @@
+import jep
+
+class Canvas(jep.PyJObject): ...
+
+class GraphicsContext(jep.PyJObject): ...
+

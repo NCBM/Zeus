@@ -1,0 +1,6 @@
+import jep
+
+class DOMCryptoContext(jep.PyJObject): ...
+
+class DOMURIReference(jep.PyJObject): ...
+

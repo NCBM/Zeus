@@ -1,0 +1,6 @@
+import jep
+
+class FileSystemProvider(jep.PyJObject): ...
+
+class FileTypeDetector(jep.PyJObject): ...
+

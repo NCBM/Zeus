@@ -1,0 +1,6 @@
+import jep
+
+class InconsistentTypeCodeHelper(jep.PyJObject): ...
+
+class InconsistentTypeCode(jep.PyJObject): ...
+

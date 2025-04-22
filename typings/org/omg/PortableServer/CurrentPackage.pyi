@@ -1,0 +1,6 @@
+import jep
+
+class NoContextHelper(jep.PyJObject): ...
+
+class NoContext(jep.PyJObject): ...
+

@@ -1,0 +1,6 @@
+import jep
+
+class DOMSource(jep.PyJObject): ...
+
+class DOMLocator(jep.PyJObject): ...
+

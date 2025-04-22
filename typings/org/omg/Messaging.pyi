@@ -1,0 +1,6 @@
+import jep
+
+class SyncScopeHelper(jep.PyJObject): ...
+
+class SYNC_WITH_TRANSPORT(jep.PyJObject): ...
+

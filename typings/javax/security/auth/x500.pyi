@@ -1,0 +1,6 @@
+import jep
+
+class X500PrivateCredential(jep.PyJObject): ...
+
+class X500Principal(jep.PyJObject): ...
+

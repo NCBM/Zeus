@@ -1,0 +1,6 @@
+import jep
+
+class InputMethodContext(jep.PyJObject): ...
+
+class InputMethod(jep.PyJObject): ...
+

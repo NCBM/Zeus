@@ -1,0 +1,6 @@
+import jep
+
+class HttpHandler(jep.PyJObject): ...
+
+class HttpContext(jep.PyJObject): ...
+

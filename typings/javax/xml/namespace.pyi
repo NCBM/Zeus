@@ -1,0 +1,6 @@
+import jep
+
+class QName(jep.PyJObject): ...
+
+class NamespaceContext(jep.PyJObject): ...
+

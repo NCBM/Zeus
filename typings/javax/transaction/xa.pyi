@@ -1,0 +1,6 @@
+import jep
+
+class Xid(jep.PyJObject): ...
+
+class XAException(jep.PyJObject): ...
+

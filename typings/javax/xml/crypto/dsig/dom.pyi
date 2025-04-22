@@ -1,0 +1,6 @@
+import jep
+
+class DOMSignContext(jep.PyJObject): ...
+
+class DOMValidateContext(jep.PyJObject): ...
+

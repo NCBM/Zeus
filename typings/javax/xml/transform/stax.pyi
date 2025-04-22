@@ -1,0 +1,6 @@
+import jep
+
+class StAXResult(jep.PyJObject): ...
+
+class StAXSource(jep.PyJObject): ...
+

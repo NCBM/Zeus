@@ -1,0 +1,6 @@
+import jep
+
+class SocketFactory(jep.PyJObject): ...
+
+class ServerSocketFactory(jep.PyJObject): ...
+

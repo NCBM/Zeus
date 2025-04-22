@@ -1,0 +1,6 @@
+import jep
+
+class JConsoleContext(jep.PyJObject): ...
+
+class JConsolePlugin(jep.PyJObject): ...
+

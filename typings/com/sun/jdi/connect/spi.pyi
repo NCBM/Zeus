@@ -1,0 +1,6 @@
+import jep
+
+class TransportService(jep.PyJObject): ...
+
+class ClosedConnectionException(jep.PyJObject): ...
+

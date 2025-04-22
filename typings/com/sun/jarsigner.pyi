@@ -1,0 +1,6 @@
+import jep
+
+class ContentSignerParameters(jep.PyJObject): ...
+
+class ContentSigner(jep.PyJObject): ...
+
