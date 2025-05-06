@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class Delegate(jep._PyJObject): ...
+class Delegate[**Ts](jep._PyJObject): ...
 

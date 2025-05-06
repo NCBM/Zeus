@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class SystemResourcePressureMXBean(jep._PyJObject): ...
+class SystemResourcePressureMXBean[**Ts](jep._PyJObject): ...
 

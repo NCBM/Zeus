@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class AttachProvider(jep._PyJObject): ...
+class AttachProvider[**Ts](jep._PyJObject): ...
 

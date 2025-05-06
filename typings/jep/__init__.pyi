@@ -3,10 +3,15 @@ from contextlib import AbstractContextManager
 from typing import Any, Self, overload, override
 
 class _PyJClass(type):
-    ...
+    def __getattr__(self, name: str) -> Any: ...
+
+    @override
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
 
 
 class _PyJObject(metaclass=_PyJClass):
+    def __init__(self, *args, **kwds) -> None: ...
+    
     def __getattr__(self, name: str) -> Any: ...
 
     @override

@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class Channels(jep._PyJObject): ...
+class Channels[**Ts](jep._PyJObject): ...
 

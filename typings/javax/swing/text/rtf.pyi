@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class RTFEditorKit(jep._PyJObject): ...
+class RTFEditorKit[**Ts](jep._PyJObject): ...
 

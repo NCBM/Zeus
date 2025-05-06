@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class XMLConstants(jep._PyJObject): ...
+class XMLConstants[**Ts](jep._PyJObject): ...
 

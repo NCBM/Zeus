@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class PortableRemoteObject(jep._PyJObject): ...
+class PortableRemoteObject[**Ts](jep._PyJObject): ...
 

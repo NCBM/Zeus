@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class JavaShellToolBuilder(jep._PyJObject): ...
+class JavaShellToolBuilder[**Ts](jep._PyJObject): ...
 

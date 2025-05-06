@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class UserJvmOptionsService(jep._PyJObject): ...
+class UserJvmOptionsService[**Ts](jep._PyJObject): ...
 

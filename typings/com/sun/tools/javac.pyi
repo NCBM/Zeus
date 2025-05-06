@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class Main(jep._PyJObject): ...
+class Main[**Ts](jep._PyJObject): ...
 

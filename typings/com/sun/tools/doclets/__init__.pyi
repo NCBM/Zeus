@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class Taglet(jep._PyJObject): ...
+class Taglet[**Ts](jep._PyJObject): ...
 

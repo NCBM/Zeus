@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class DOMImplementationRegistry(jep._PyJObject): ...
+class DOMImplementationRegistry[**Ts](jep._PyJObject): ...
 

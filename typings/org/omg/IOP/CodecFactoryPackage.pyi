@@ -1,6 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class UnknownEncodingHelper(jep._PyJObject): ...
-
-class UnknownEncoding(jep._PyJObject): ...
+class UnknownEncodingHelper[**Ts](jep._PyJObject): ...
 

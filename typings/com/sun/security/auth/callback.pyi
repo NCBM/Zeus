@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class TextCallbackHandler(jep._PyJObject): ...
+class TextCallbackHandler[**Ts](jep._PyJObject): ...
 

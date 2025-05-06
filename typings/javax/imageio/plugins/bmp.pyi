@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class BMPImageWriteParam(jep._PyJObject): ...
+class BMPImageWriteParam[**Ts](jep._PyJObject): ...
 

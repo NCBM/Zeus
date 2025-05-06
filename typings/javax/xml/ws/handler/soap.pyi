@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class SOAPHandler(jep._PyJObject): ...
+class SOAPMessageContext[**Ts](jep._PyJObject): ...
 

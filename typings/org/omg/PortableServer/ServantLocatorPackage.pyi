@@ -1,4 +1,6 @@
+# pyright: reportPrivateUsage = none
+
 import jep
 
-class CookieHolder(jep._PyJObject): ...
+class CookieHolder[**Ts](jep._PyJObject): ...
 
