@@ -71,7 +71,7 @@ public class ZeusMain
             MainInterpreter.setInitParams(config);
             pythonRunner = new PythonRunner();
             pythonRunner.execute((interpreter) -> {
-                interpreter.exec("from zeusapi import stubgen");
+                interpreter.exec("from zeusapi.internals import stubgen");
                 interpreter.exec("from zeusapi.internals import javaside");
                 interpreter.invoke("stubgen._set_reflector", ReflectHelper.class);
                 interpreter.invoke("javaside._set_python_runner_class", PythonRunner.class);
