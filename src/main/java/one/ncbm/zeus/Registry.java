@@ -20,20 +20,24 @@ public class Registry {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ZeusMain.MODID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, ZeusMain.MODID);
 
+    @SuppressWarnings("unused")  // used externally
     public static DeferredBlock<Block> block(String name) {
         return BLOCKS.registerSimpleBlock(name);
     }
 
+    @SuppressWarnings("unused")  // used externally
     public static DeferredItem<BlockItem> blockItem(String name, DeferredBlock<Block> blockItem) {
         return ITEMS.registerSimpleBlockItem(name, blockItem);
     }
 
+    @SuppressWarnings("unused")  // used externally
     public static DeferredItem<Item> item(String name) {
         return ITEMS.registerSimpleItem(name);
     }
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTab(
-        String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource
+    @SuppressWarnings("unused")  // used externally
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTab(
+            String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource
     ) {
         return CREATIVE_MODE_TABS.register(name, () -> CreativeModeTab.builder()
             .title(Component.translatable(langKey))
@@ -41,8 +45,9 @@ public class Registry {
             .displayItems(itemSource).build());
     }
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabBefore(
-        String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceLocation... before
+    @SuppressWarnings("unused")  // used externally
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabBefore(
+            String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceLocation... before
     ) {
         return CREATIVE_MODE_TABS.register(name, () -> CreativeModeTab.builder()
             .title(Component.translatable(langKey))
@@ -51,9 +56,10 @@ public class Registry {
             .displayItems(itemSource).build());
     }
 
+    @SuppressWarnings("unused")  // used externally
     @SafeVarargs
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabBefore(
-        String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceKey<CreativeModeTab>... before
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabBefore(
+            String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceKey<CreativeModeTab>... before
     ) {
         return CREATIVE_MODE_TABS.register(name, () -> CreativeModeTab.builder()
             .title(Component.translatable(langKey))
@@ -62,8 +68,9 @@ public class Registry {
             .displayItems(itemSource).build());
     }
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabAfter(
-        String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceLocation... after
+    @SuppressWarnings("unused")  // used externally
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabAfter(
+            String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceLocation... after
     ) {
         return CREATIVE_MODE_TABS.register(name, () -> CreativeModeTab.builder()
             .title(Component.translatable(langKey))
@@ -72,9 +79,10 @@ public class Registry {
             .displayItems(itemSource).build());
     }
 
+    @SuppressWarnings("unused")  // used externally
     @SafeVarargs
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabAfter(
-        String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceKey<CreativeModeTab>... after
+    public static DeferredHolder<CreativeModeTab, CreativeModeTab> creativeModeTabAfter(
+            String name, String langKey, DeferredItem<Item> iconItem, DisplayItemsGenerator itemSource, ResourceKey<CreativeModeTab>... after
     ) {
         return CREATIVE_MODE_TABS.register(name, () -> CreativeModeTab.builder()
             .title(Component.translatable(langKey))

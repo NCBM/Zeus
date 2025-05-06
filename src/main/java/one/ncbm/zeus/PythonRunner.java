@@ -15,17 +15,18 @@ public class PythonRunner implements Closeable {
     private final BlockingQueue<Consumer<Interpreter>> taskQueue = new LinkedBlockingQueue<>();
     private volatile boolean running = true;
     private static final Logger LOGGER = LogUtils.getLogger();
-    private volatile Thread thread;
+    private final Thread thread;
 
     public PythonRunner() {
         thread = new Thread(() -> {
-            Interpreter interp = new SharedInterpreter(); 
+            Interpreter interp = new SharedInterpreter();
             while (running) {
                 try {
                     Consumer<Interpreter> task = taskQueue.take();
                     task.accept(interp);
                 } catch (InterruptedException e) {
-                    LOGGER.warn("Interpreter queue interrupted.");
+                    LOGGER.warn("Interpreter interrupted.");
+                    break;
                 }
             }
             interp.close();
@@ -43,5 +44,11 @@ public class PythonRunner implements Closeable {
     public void close() {
         running = false;
         taskQueue.clear();
+        try {
+            thread.join(500);
+        } catch (InterruptedException e) {
+            return;
+        }
+        thread.interrupt();
     }
 }

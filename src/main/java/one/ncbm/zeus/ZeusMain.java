@@ -1,8 +1,5 @@
 package one.ncbm.zeus;
 
-import java.io.File;
-
-// import org.apache.logging.log4j.core.config.builder.api.Component;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -45,7 +42,7 @@ public class ZeusMain
     public static final String MODID = "zeus";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public static final Registry registry = new Registry();
+//    public static final Registry registry = new Registry();
     public PythonRunner pythonRunner;
     // private Object server;
 
@@ -59,37 +56,33 @@ public class ZeusMain
     public static final DeferredItem<Item> EXAMPLE_ITEM = ITEMS.registerSimpleItem("example_item", new Item.Properties().food(new FoodProperties.Builder()
             .alwaysEdible().nutrition(1).saturationModifier(2f).build()));
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = Registry.creativeModeTabBefore(
-        "example_tab", "itemGroup.zeus", EXAMPLE_ITEM, (parameters, output) -> {
-            output.accept(EXAMPLE_ITEM.get());
-        }, CreativeModeTabs.COMBAT);
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = Registry.creativeModeTab(
+        "example_tab", "itemGroup.zeus", EXAMPLE_ITEM, (parameters, output) -> output.accept(EXAMPLE_ITEM.get()));
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
     public ZeusMain(IEventBus modEventBus, ModContainer modContainer)
     {
-        File pyhome = new File("python/");
-        File libjep = new File("python/lib/python3.13/site-packages/jep/libjep.so");
         PyConfig config = new PyConfig();
-        config.setPythonHome(pyhome.getAbsolutePath());
+        config.setPythonHome(PythonRuntimeManager.getPythonHome());
         
         try {
-            MainInterpreter.setJepLibraryPath(libjep.getAbsolutePath());
+            MainInterpreter.setJepLibraryPath(PythonRuntimeManager.getJepLibPath());
             MainInterpreter.setInitParams(config);
             pythonRunner = new PythonRunner();
             pythonRunner.execute((interpreter) -> {
-                interpreter.exec("import importlib");
-                interpreter.exec("import sys");
-                interpreter.exec("import os");
-                interpreter.exec("sys.path.insert(0, \"python/mods\")");
-                interpreter.exec("for mod in os.listdir('python/mods'):\n    if mod.startswith('_'): continue\n    importlib.import_module(mod)");
+                interpreter.exec("from zeusapi import stubgen");
+                interpreter.exec("from zeusapi.internals import javaside");
+                interpreter.invoke("stubgen._set_reflector", ReflectHelper.class);
+                interpreter.invoke("javaside._set_python_runner_class", PythonRunner.class);
+                interpreter.runScript(PythonRuntimeManager.getPythonModuleRoot() + "/zeus-shim.py");
             });
         } catch (Exception e) {
             LOGGER.error("Cannot start python interpreter for mod '{}'.", MODID, e);
             throw e;
         }
 
-        // Register the commonSetup method for modloading
+        // Register the commonSetup method for mod loading
         modEventBus.addListener(this::commonSetup);
 
         BLOCKS.register(modEventBus);
@@ -116,7 +109,7 @@ public class ZeusMain
         if (Config.logDirtBlock)
             LOGGER.info("DIRT BLOCK >> {}", BuiltInRegistries.BLOCK.getKey(Blocks.DIRT));
 
-        LOGGER.info(Config.magicNumberIntroduction + Config.magicNumber);
+        LOGGER.info("{}{}", Config.magicNumberIntroduction, Config.magicNumber);
 
         Config.items.forEach((item) -> LOGGER.info("ITEM >> {}", item.toString()));
     }
