@@ -27,6 +27,7 @@ class JMethodSig(TypedDict):
     final: NotRequired[bool]  # convert to @final
     protected: NotRequired[bool]  # in our case only 'public' and 'protected' can be accessed
     overload: NotRequired["JMethodSig"]
+    generics: NotRequired[list[JClsGenericDecl]]
 
 
 class JFieldSig(TypedDict):

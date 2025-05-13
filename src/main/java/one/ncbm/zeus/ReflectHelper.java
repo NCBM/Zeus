@@ -57,10 +57,10 @@ public class ReflectHelper {
         }
     }
 
-    // 处理泛型参数
-    private static List<Map<String, Object>> processTypeParameters(TypeVariable<?>[] typeParams) {
+    // 处理方法泛型参数
+    private static List<Map<String, Object>> processMethodTypeParameters(TypeVariable<Method>[] typeParams) {
         List<Map<String, Object>> generics = new ArrayList<>();
-        for (TypeVariable<?> tv : typeParams) {
+        for (TypeVariable<Method> tv : typeParams) {
             Map<String, Object> generic = new LinkedHashMap<>();
             generic.put("name", tv.getName());
             
@@ -87,8 +87,14 @@ public class ReflectHelper {
             method.put("name", m.getName());
             method.put("return_type", processType(m.getGenericReturnType()));
             method.put("parameters", processParameters(m.getGenericParameterTypes(), 
-                                                     m.getParameters(),
-                                                     m.isVarArgs()));
+                                                    m.getParameters(),
+                                                    m.isVarArgs()));
+            
+            // 新增：处理方法级别的泛型参数
+            TypeVariable<Method>[] typeParams = m.getTypeParameters();
+            if (typeParams.length > 0) {
+                method.put("generics", processMethodTypeParameters(typeParams));
+            }
             
             // 方法修饰符
             int modifiers = m.getModifiers();
@@ -110,6 +116,24 @@ public class ReflectHelper {
             }
         }
         return methodList;
+    }
+
+    // 处理泛型参数
+    private static List<Map<String, Object>> processTypeParameters(TypeVariable<?>[] typeParams) {
+        List<Map<String, Object>> generics = new ArrayList<>();
+        for (TypeVariable<?> tv : typeParams) {
+            Map<String, Object> generic = new LinkedHashMap<>();
+            generic.put("name", tv.getName());
+            
+            // 处理泛型约束
+            Type[] bounds = tv.getBounds();
+            if (bounds.length > 0 && !bounds[0].equals(Object.class)) {
+                generic.put("extends", typeToString(bounds[0]));
+            }
+            
+            generics.add(generic);
+        }
+        return generics;
     }
 
     // 处理字段

@@ -1,5 +1,6 @@
+import ast
 from pathlib import Path
-import re
+import shutil
 from typing import Any, Final
 
 from java.lang import Class
@@ -9,7 +10,6 @@ from .typedef import (
     JClsSignatureData,
     JConstructorSig,
     JFieldSig,
-    JMethodParam,
     JMethodSig,
     JType,
 )
@@ -25,7 +25,10 @@ def _set_reflector(o: object):
     reflector = o
 
 
-class PythonStubGenerator:
+_ = _set_reflector
+
+
+class JavaToPythonAST:
     TYPE_MAPPING: Final = {
         "void": "None",
         "byte": "int",
@@ -39,253 +42,381 @@ class PythonStubGenerator:
         "byte[]": "bytes",
         "boolean": "bool",
         "java.lang.String": "str",
-        # "java.lang.Object": "Any",
+        "java.lang.Object": "object",
     }
 
-    def generate_stub(self, signature: JClsSignatureData, output_path: str) -> None:
-        """生成最终的.pyi文件"""
-        stub_content = self._convert_to_stub(signature)
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            _ = f.write(stub_content)
+    def __init__(self):
+        pass
 
-    def _convert_to_stub(self, signature: JClsSignatureData) -> str:
-        """将Java签名转换为Python类型存根内容"""
-        lines: list[str] = []
+    def build_module(self, class_info: JClsSignatureData) -> ast.Module:
+        """构建完整的Python模块AST"""
+        body: list[ast.stmt] = []
 
-        # 1. 生成导入部分
-        lines.extend(self._generate_imports(signature))
-        lines.append("")
+        # add import statements
+        body.append(
+            ast.ImportFrom(
+                module="typing",
+                names=[
+                    ast.alias(name="Final"),
+                    ast.alias(name="ClassVar"),
+                    ast.alias(name="overload"),
+                ],
+                level=0,
+            )
+        )
 
-        # 2. 生成泛型类型变量
-        lines.extend(self._generate_generics(signature.get("generics", [])))
-        if signature.get("generics"):
-            lines.append("")
+        for jtp in self._collect_member_types(class_info):
+            split = self._split_java_type(jtp)
+            if split is None:
+                continue
+            mod, name = split
+            body.append(ast.ImportFrom(module=mod, names=[ast.alias(name=name)], level=0))
 
-        # 3. 生成类定义
-        lines.append(self._generate_class_declaration(signature))
-        lines.append("")
+        # add generic typevars
+        if generics := class_info.get("generics"):
+            body.extend(self._build_typevars(generics))
 
-        # 4. 生成字段
-        if fields := signature.get("fields"):
-            lines.append("    # Fields")
-            for field in fields:
-                lines.append(self._generate_field(field))
-            lines.append("")
+        # build class def
+        class_def = self._build_class_def(class_info)
+        body.append(class_def)
 
-        # 5. 生成构造器
-        if constructors := signature.get("constructors"):
-            lines.append("    # Constructors")
-            for constructor in constructors:
-                if len(constructors) > 1:
-                    lines.append("    @overload")
-                lines.append(self._generate_constructor(constructor))
-            lines.append("")
+        return ast.Module(body=body, type_ignores=[])
 
-        # 6. 生成方法
-        if methods := signature.get("methods"):
-            lines.append("    # Methods")
-            for method in methods:
-                lines.extend(self._generate_method(method))
-            lines.append("")
-
-        return "\n".join(lines)
-
-    def _generate_imports(self, signature: JClsSignatureData) -> list[str]:
-        """生成必要的导入语句"""
-        imports = {"from typing import Any, ClassVar, Final, Generic, TypeVar, overload"}
-
-        # 添加父类导入
-        if extends := signature.get("extends"):  # noqa: SIM102
-            if pkg := self._get_package_from_type(extends):
-                imports.add(f"import {pkg}")
-
-        # 添加接口导入
-        for interface in signature.get("implements", []):
-            if pkg := self._get_package_from_type(interface):
-                imports.add(f"import {pkg}")
-
-        # 添加字段/方法类型导入
-        for member_type in self._collect_member_types(signature):
-            if pkg := self._get_package_from_type(member_type):
-                imports.add(f"import {pkg}")
-
-        return sorted(imports)
-
-    def _collect_member_types(self, signature: JClsSignatureData) -> list[str]:
+    def _collect_member_types(self, signature: JClsSignatureData) -> set[str]:
         """收集所有需要导入的成员类型"""
         types: set[str] = set()
 
         # 字段类型
         for field in signature.get("fields", []):
-            self._extract_types_from_jtype(field["type"], types)
+            types |= self._extract_types_from_jtype(field["type"])
 
         # 方法类型
         for method in signature.get("methods", []):
-            self._extract_types_from_jtype(method["return_type"], types)
+            types |= self._extract_types_from_jtype(method["return_type"])
             for param in method["parameters"]:
-                self._extract_types_from_jtype(param["type"], types)
+                types |= self._extract_types_from_jtype(param["type"])
 
         # 构造器参数类型
         for constructor in signature.get("constructors", []):
             for param in constructor["parameters"]:
-                self._extract_types_from_jtype(param["type"], types)
+                types |= self._extract_types_from_jtype(param["type"])
 
-        return list(types)
+        return types
 
-    def _extract_types_from_jtype(self, jtype: JType, types: set[str]) -> None:
+    def _extract_types_from_jtype(self, jtype: JType) -> set[str]:
         """递归提取JType中的所有类型"""
+        types: set[str] = set()
+
         if raw_type := jtype.get("type"):
             types.add(raw_type)
+
         if generics := jtype.get("generics"):
             for generic in generics:
-                self._extract_types_from_jtype(generic, types)
+                types |= self._extract_types_from_jtype(generic)
 
-    def _generate_generics(self, generics: list[JClsGenericDecl]) -> list[str]:
-        """生成泛型类型变量声明"""
-        lines: list[str] = []
+        return types
+
+    def _build_typevars(self, generics: list[JClsGenericDecl]) -> list[ast.Assign]:
+        """构建类型变量定义AST"""
+        assignments: list[ast.Assign] = []
         for generic in generics:
-            line = f"{generic['name']} = TypeVar('{generic['name']}'"
+            # 示例：T = TypeVar('T', bound=Parent)
+            if (bound := generic.get("super")) is None:
+                continue
+            target = ast.Name(id=generic["name"], ctx=ast.Store())
+
+            args: list[ast.expr] = [ast.Constant(value=generic["name"])]
+            kwds: list[ast.keyword] = [
+                ast.keyword(
+                    arg="bound", value=ast.Name(id=self._map_java_type(bound), ctx=ast.Load())
+                ),
+                ast.keyword(arg="contravariant", value=ast.Constant(True)),
+            ]
+
+            value = ast.Call(func=ast.Name(id="TypeVar", ctx=ast.Load()), args=args, keywords=kwds)
+
+            assignments.append(ast.Assign(targets=[target], value=value))
+        return assignments
+
+    def _build_type_params(self, generics: list[JClsGenericDecl]) -> list[ast.type_param]:
+        """构建 Python 3.12+ 风格的类型参数"""
+        type_params: list[ast.type_param] = []
+
+        for generic in generics:
+            name = generic["name"]
+
             if extends := generic.get("extends"):
-                line += f", bound={self._map_java_type(extends)}"
-            lines.append(line + ")")
-        return lines
+                bound = self._build_type_annotation(extends)
+                type_param = ast.TypeVar(name, bound=bound)
 
-    def _generate_class_declaration(self, signature: JClsSignatureData) -> str:
-        """生成类定义行"""
-        parts: list[str] = ["class ", signature["class_name"]]
+            else:
+                type_param = ast.TypeVar(name)
 
-        # 添加泛型参数
-        if generics := signature.get("generics"):
-            generic_params = ", ".join(g["name"] for g in generics)
-            parts.append(f"[{generic_params}]")
+            type_params.append(type_param)
 
-        # 添加继承关系
-        extends: list[str] = []
-        if superclass := signature.get("extends"):
-            extends.append(self._map_java_type(superclass))
-        if interfaces := signature.get("implements"):
-            extends.extend(self._map_java_type(i) for i in interfaces)
+        return type_params
 
-        if extends:
-            parts.append(f"({', '.join(extends)})")
+    def _build_class_def(self, class_info: JClsSignatureData) -> ast.ClassDef:
+        """构建类定义AST"""
+        # 类名处理
+        class_name = class_info["class_name"].split("$")[-1]
 
-        parts.append(":")
-        return "".join(parts)
+        # 基类处理
+        bases: list[ast.expr] = []
+        if extends := class_info.get("extends"):
+            bases.append(self._build_type_annotation(extends))
 
-    def _generate_field(self, field: JFieldSig) -> str:
-        """生成字段定义"""
-        field_type = self._convert_jtype_to_py(field["type"])
-        modifiers: list[str] = []
+        # 接口实现
+        for interface in class_info.get("implements", []):
+            bases.append(self._build_type_annotation(interface))
 
-        if field.get("static"):
-            modifiers.append("ClassVar")
-        if field.get("final"):
-            modifiers.append("Final")
+        # 泛型参数
+        type_params = self._build_type_params(class_info.get("generics", []))
 
-        if modifiers:
-            field_type = f"{'['.join(modifiers)}[{field_type}]]"
+        # 类体内容
+        body: list[ast.stmt] = []
+        if fields := class_info.get("fields"):
+            for field in fields:
+                body.append(self._build_field(field))
 
-        line = f"    {field['name']}: {field_type}"
+        if methods := class_info.get("methods"):
+            for method in methods:
+                body.extend(self._build_method(method))
 
-        if "default_value" in field:
-            line += f" = {field['default_value']}"
+        if constructors := class_info.get("constructors"):
+            for constructor in constructors:
+                body.extend(self._generate_constructor(constructor))
 
-        return line
+        return ast.ClassDef(
+            name=class_name,
+            bases=bases,
+            keywords=[],
+            body=body,
+            decorator_list=[],
+            type_params=type_params,
+        )
 
-    def _generate_constructor(self, constructor: JConstructorSig) -> str:
-        """生成构造器定义"""
-        params = self._format_parameters(constructor["parameters"])
-        params = ("self, " + params) if params else "self"
-        return f"    def __init__({params}) -> None: ..."
+    def _build_field(self, field_info: JFieldSig) -> ast.AnnAssign:
+        """构建字段定义AST"""
+        annotation = self._build_type_annotation(field_info["type"])
 
-    def _generate_method(self, method: JMethodSig, *, _overload: bool = False) -> list[str]:
-        """生成方法定义（处理重载）"""
-        lines: list[str] = []
+        # 处理修饰符
+        if field_info.get("final"):
+            annotation = ast.Subscript(
+                value=ast.Name(id="Final", ctx=ast.Load()), slice=annotation, ctx=ast.Load()
+            )
+        elif field_info.get("static"):
+            annotation = ast.Subscript(
+                value=ast.Name(id="ClassVar", ctx=ast.Load()), slice=annotation, ctx=ast.Load()
+            )
 
-        # 方法修饰符
-        decorators: list[str] = []
-        if method.get("static"):
-            decorators.append("@staticmethod")
-        if method.get("final"):
-            decorators.append("@final")
-        if _overload or method.get("overload"):
-            decorators.append("@overload")
+        return ast.AnnAssign(
+            target=ast.Name(id=field_info["name"], ctx=ast.Store()),
+            annotation=annotation,
+            value=ast.Constant(value=Ellipsis)
+            if "default_value" not in field_info
+            else ast.Constant(value=field_info["default_value"]),
+            simple=1,
+        )
 
-        # 方法签名
-        return_type = self._convert_jtype_to_py(method["return_type"])
-        params = self._format_parameters(method["parameters"])
-        if not method.get("static"):
-            params = ("self, " + params) if params else "self"
+    def _build_method(self, method_info: JMethodSig) -> list[ast.stmt]:
+        """构建方法定义AST（处理重载）"""
+        nodes: list[ast.stmt] = []
 
-        method_line = f"    def {method['name']}({params}) -> {return_type}: ..."
+        # 类型参数
+        type_params = self._build_type_params(method_info.get("generics", []))
 
-        # 组装完整方法
-        for decorator in decorators:
-            lines.append(f"    {decorator}")
-        lines.append(method_line)
+        # 修饰符
+        decorators: list[ast.expr] = []
+        if method_info.get("static"):
+            decorators.append(ast.Name(id="staticmethod", ctx=ast.Load()))
+        if method_info.get("final"):
+            decorators.append(ast.Name(id="final", ctx=ast.Load()))
+        if method_info.get("overload"):
+            decorators.append(ast.Name(id="overload", ctx=ast.Load()))
+
+        # 参数
+        args: list[ast.arg] = []
+        if not method_info.get("static"):
+            args.append(ast.arg(arg="self", annotation=None))
+
+        for param in method_info["parameters"]:
+            arg = ast.arg(arg=param["name"], annotation=self._build_type_annotation(param["type"]))
+            if param.get("vararg"):
+                arg.arg = "*" + arg.arg
+            args.append(arg)
+
+        # 返回值
+        returns = self._build_type_annotation(method_info["return_type"])
+
+        # 构建函数定义
+        func_def = ast.FunctionDef(
+            name=method_info["name"],
+            type_params=type_params,
+            args=ast.arguments(
+                posonlyargs=[], args=args, kwonlyargs=[], kw_defaults=[], defaults=[]
+            ),
+            body=[ast.Expr(value=ast.Constant(value=Ellipsis))],
+            decorator_list=decorators,
+            returns=returns,
+        )
+
+        nodes.append(func_def)
 
         # 处理重载
-        if overload := method.get("overload"):
-            lines.extend(self._generate_method(overload, _overload=True))
+        if overload := method_info.get("overload"):
+            nodes.extend(self._build_method(overload))
 
-        return lines
+        return nodes
 
-    def _format_parameters(self, parameters: list[JMethodParam]) -> str:
-        """格式化参数列表"""
-        param_strs: list[str] = []
-        for param in parameters:
-            param_type = self._convert_jtype_to_py(param["type"])
-            if param.get("vararg"):
-                param_strs.append(f"*{param['name']}: {param_type}")
-            else:
-                param_strs.append(f"{param['name']}: {param_type}")
-        return ", ".join(param_strs)
+    def _generate_constructor(self, constructor: JConstructorSig) -> list[ast.stmt]:
+        """生成构造函数的AST节点列表"""
+        nodes: list[ast.stmt] = []
 
-    def _convert_jtype_to_py(self, jtype: JType) -> str:
-        """将JType转换为Python类型表达式"""
-        java_type = jtype["type"]
-        py_type = self._map_java_type(java_type)
+        # 1. 处理装饰器
+        decorators: list[ast.expr] = []
+        if constructor.get("protected"):
+            decorators.append(ast.Name(id="protected", ctx=ast.Load()))
 
-        # 处理泛型
-        if generics := jtype.get("generics"):
-            generic_args = ", ".join(self._convert_jtype_to_py(g) for g in generics)
-            py_type = f"{py_type}[{generic_args}]"
+        # 2. 构建参数列表
+        args: list[ast.arg] = []
+        # self参数
+        args.append(ast.arg(arg="self", annotation=None))
 
-        # 处理数组
-        if dim := jtype.get("dimensions", 0):
-            py_type = "list[" * dim + py_type + "]" * dim
+        for param in constructor["parameters"]:
+            # 参数类型注解
+            annotation = self._build_type_annotation(param["type"])
 
-        return py_type
+            # 可变参数处理（*args）
+            arg_name = f"*{param['name']}" if param.get("vararg") else param["name"]
 
-    def _map_java_type(self, java_type: str) -> str:
-        """映射Java类型到Python类型"""
-        # 处理内部类(替换$为.)
-        normalized_type = java_type.replace("$", ".")
+            args.append(
+                ast.arg(
+                    arg=arg_name,
+                    annotation=annotation,
+                )
+            )
+
+        # 3. 构建函数定义
+        init_func = ast.FunctionDef(
+            name="__init__",
+            args=ast.arguments(
+                posonlyargs=[],
+                args=args,
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+                vararg=None,
+                kwarg=None,
+            ),
+            body=[ast.Expr(value=ast.Constant(value=Ellipsis))],
+            decorator_list=decorators,
+            returns=ast.Name(id="None", ctx=ast.Load()),
+            type_params=[],  # 构造函数不支持独立泛型
+        )
+
+        nodes.append(init_func)
+
+        return nodes
+
+    def _build_type_annotation(self, java_type: str | JType) -> ast.expr:
+        """支持新类型语法的类型注解构建"""
+        if isinstance(java_type, dict):
+            base_type = java_type["type"]
+            dim = java_type.get("dimensions", 0)
+            generics = java_type.get("generics", [])
+        else:
+            base_type = java_type
+            dim = 0
+            generics = []
 
         # 基本类型映射
-        if normalized_type in self.TYPE_MAPPING:
-            return self.TYPE_MAPPING[normalized_type]
+        if base_type in self.TYPE_MAPPING:
+            annotation = ast.Name(id=self.TYPE_MAPPING[base_type], ctx=ast.Load())
+        else:
+            # 处理泛型
+            if "<" in base_type or generics:
+                base = base_type.split("<")[0] if "<" in base_type else base_type
+                base_ast = ast.Name(id=self._map_java_type(base), ctx=ast.Load())
 
-        # 保留其他Java类型不变
-        return normalized_type
+                generic_args = [
+                    self._build_type_annotation(g)
+                    for g in (generics or base_type.split("<")[1].rstrip(">").split(","))
+                ]
 
-    def _get_package_from_type(self, java_type: str) -> str | None:
-        """从完整类型名中提取包名"""
-        if "." not in java_type:
+                annotation = ast.Subscript(
+                    value=base_ast,
+                    slice=ast.Tuple(elts=generic_args, ctx=ast.Load())
+                    if len(generic_args) > 1
+                    else generic_args[0],
+                    ctx=ast.Load(),
+                )
+            else:
+                annotation = ast.Name(id=self._map_java_type(base_type), ctx=ast.Load())
+
+        # 处理数组
+        for _ in range(dim):
+            annotation = ast.Subscript(
+                value=ast.Name(id="list", ctx=ast.Load()), slice=annotation, ctx=ast.Load()
+            )
+
+        return annotation
+
+    def _map_java_type(self, java_type: str) -> str:
+        """映射Java类型名到Python类型名"""
+        if "<" in java_type:
+            return self._map_java_type(java_type.split("<")[0])
+        return java_type.split(".")[-1].replace("$", ".")
+
+    def _split_java_type(self, java_type: str) -> tuple[str, str] | None:
+        """拆分Java类型为包名和类名"""
+        parts = java_type.replace("$", ".").split(".")
+        if len(parts) < 2:
             return None
-
-        # 处理泛型类型(如List<String>)
-        clean_type = re.sub(r"<.*>", "", java_type)
-        return ".".join(clean_type.split(".")[:-1])
+        return (".".join(parts[:-1]), parts[-1])
 
 
-def generate_stub(java_class_name: str, output_path: str):
+def generate_stub(java_class_name: str, output_dir: str):
     jclass = Class.forName(java_class_name)
     signature = reflector.generateClassSignature(jclass)
-    stubgen = PythonStubGenerator()
+    stubgen = JavaToPythonAST()
 
-    stubgen.generate_stub(signature, output_path)
+    # Determine output path based on packaging rules
+    output_path = _determine_output_path(java_class_name, output_dir)
+
+    # Ensure parent directories exist
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Generate the stub content
+    stub_content = stubgen.build_module(signature)
+
+    # Write to file
+    with open(output_path, "a" if output_path.exists() else "w", encoding="utf-8") as f:
+        _ = f.write(ast.unparse(ast.fix_missing_locations(stub_content)))
+        _ = f.write("\n\n")
+
+
+def _determine_output_path(java_class_name: str, output_dir: str) -> Path:
+    parts = java_class_name.split(".")
+    if len(parts) < 2:
+        raise ValueError(f"Invalid Java class name: {java_class_name}")
+
+    base_path = Path(output_dir)
+    package_parts = parts[:-1]
+
+    target_file = base_path
+
+    for route, r_next in zip(package_parts, package_parts[1:] + [None], strict=True):
+        target_file /= route
+        if r_next is None:
+            if target_file.is_dir():
+                return target_file / "__init__.pyi"
+            return target_file.with_suffix(".pyi")
+        target_file.mkdir(parents=True, exist_ok=True)
+        if (old_pyi := target_file.with_suffix(".pyi")).is_file():
+            _ = shutil.move(old_pyi, target_file / "__init__.pyi")
+
+    raise RuntimeError("An unreachable end has been executed.")
 
 
 # def generate_stub_for_loaded_classes(output_dir: str):
